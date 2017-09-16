@@ -1,0 +1,6 @@
+org/myorg/quickstart/BatchJob.class
+org/myorg/quickstart/WordCount.class
+org/myorg/quickstart/StreamingJob.class
+org/myorg/quickstart/SocketTextStreamWordCount$LineSplitter.class
+org/myorg/quickstart/SocketTextStreamWordCount.class
+org/myorg/quickstart/WordCount$LineSplitter.class
