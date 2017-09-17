@@ -19,10 +19,18 @@ package org.myorg.quickstart;
 
 import org.apache.flink.api.common.functions.FlatMapFunction;
 import org.apache.flink.api.java.tuple.Tuple2;
+import org.apache.flink.core.fs.FileSystem;
+import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.windowing.assigners.SlidingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.sinks.CsvTableSink;
+import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.util.Collector;
 
 /**
@@ -66,6 +74,7 @@ public class SocketTextStreamWordCount {
 		// set up the execution environment
 		final StreamExecutionEnvironment env = StreamExecutionEnvironment
 				.getExecutionEnvironment();
+        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
 		// get input data
 		DataStream<String> text = env.socketTextStream(hostName, port);
@@ -78,10 +87,32 @@ public class SocketTextStreamWordCount {
 				text.flatMap(new LineSplitter())
 						// group by the tuple field "0" and sum up tuple field "1"
 						.keyBy(0)
-						.sum(1);
+                        .sum(1);
 
         // register the DataStream as table "myTable2" with fields "myLong", "myString"
 		tableEnv.registerDataStream("myTable2", stream, "myLong, myString");
+
+
+        // scan registered Orders table
+        Table myTable2 = tableEnv.scan("myTable2");
+        // compute revenue for all customers from France
+        Table revenue = myTable2
+                .filter("myLong > '3'")
+                .select("*");
+
+        // create a TableSink
+        TableSink sink = new CsvTableSink(
+                "/home/mustafa/deneme.csv",                  // output path
+                "|",                   // optional: delimit files by '|'
+                1,                     // optional: write to a single file
+                FileSystem.WriteMode.OVERWRITE);
+
+        // write the result Table to the TableSink
+        revenue.writeToSink(sink);
+        System.out.println("--------------------");
+        System.out.println(env.getExecutionPlan());
+        System.out.println("--------------------");
+
 
 		// execute program
 		env.execute("Java WordCount from SocketTextStream Example");
